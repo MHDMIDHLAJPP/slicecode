@@ -2,13 +2,17 @@ import { useState, useRef, useEffect } from 'react';
 import { Copy, RotateCcw } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useIDEStore } from '@/store/ideStore';
+import { useSettingsStore, fontStyles } from '@/store/settingsStore';
 
 export function TerminalPanel() {
   const { terminalLines, terminalConnection, addTerminalLine, clearTerminal, setTerminalConnection } = useIDEStore();
+  const { terminalFontSize, terminalFontStyle, terminalLineHeight, compactMode } = useSettingsStore();
   const [inputValue, setInputValue] = useState('');
   const [url, setUrl] = useState(terminalConnection.url || '');
   const terminalRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+
+  const fontFamily = fontStyles.find(f => f.id === terminalFontStyle)?.value || fontStyles[0].value;
 
   useEffect(() => {
     if (terminalRef.current) {
@@ -44,21 +48,34 @@ export function TerminalPanel() {
     }
   };
 
+  const terminalStyle = {
+    fontFamily,
+    fontSize: `${terminalFontSize}px`,
+    lineHeight: terminalLineHeight,
+  };
+
   return (
     <div className="h-full flex flex-col">
       {/* Connection bar */}
-      <div className="flex items-center gap-3 px-4 py-2 bg-ide-bg border-b border-border">
+      <div className={cn(
+        'flex items-center gap-3 px-4 bg-ide-bg border-b border-border',
+        compactMode ? 'py-1' : 'py-2'
+      )}>
         <input
           type="text"
           value={url}
           onChange={(e) => setUrl(e.target.value)}
           placeholder="Enter terminal URL"
-          className="flex-1 bg-secondary border border-border rounded px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-primary"
+          className={cn(
+            'flex-1 bg-secondary border border-border rounded px-3 text-sm focus:outline-none focus:ring-1 focus:ring-primary',
+            compactMode ? 'py-1' : 'py-1.5'
+          )}
         />
         <button
           onClick={handleConnect}
           className={cn(
-            'px-4 py-1.5 rounded text-sm font-medium transition-colors',
+            'px-4 rounded text-sm font-medium transition-colors',
+            compactMode ? 'py-1' : 'py-1.5',
             terminalConnection.status === 'connected'
               ? 'bg-destructive text-destructive-foreground hover:bg-destructive/90'
               : 'bg-primary text-primary-foreground hover:bg-primary/90'
@@ -85,14 +102,14 @@ export function TerminalPanel() {
       {/* Terminal output */}
       <div 
         ref={terminalRef}
-        className="flex-1 overflow-y-auto ide-scrollbar p-4 font-mono text-sm"
+        className="flex-1 overflow-y-auto ide-scrollbar p-4"
+        style={terminalStyle}
         onClick={() => inputRef.current?.focus()}
       >
         {terminalLines.map((line) => (
           <div
             key={line.id}
             className={cn(
-              'terminal-text',
               line.type === 'input' && 'text-status-success',
               line.type === 'output' && 'text-foreground',
               line.type === 'error' && 'text-status-error',
@@ -107,7 +124,7 @@ export function TerminalPanel() {
 
         {/* Input line */}
         {terminalConnection.status === 'connected' && (
-          <div className="flex items-center terminal-text text-status-success">
+          <div className="flex items-center text-status-success">
             <span>733b065b&gt;&nbsp;</span>
             <input
               ref={inputRef}
@@ -120,6 +137,7 @@ export function TerminalPanel() {
                 }
               }}
               className="flex-1 bg-transparent outline-none text-foreground caret-foreground"
+              style={terminalStyle}
               autoFocus
             />
             <span className="w-2 h-4 bg-foreground animate-blink" />
