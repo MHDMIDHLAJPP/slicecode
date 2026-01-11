@@ -1,6 +1,38 @@
 import { create } from 'zustand';
 import type { FileNode, EditorTab, BottomPanelTab, ActivityItem, TerminalLine, ConnectionState, DebugState } from '@/types/ide';
 
+// Helper function to sort files (folders first, then alphabetically)
+const sortFiles = (files: FileNode[]): FileNode[] => {
+  return [...files].sort((a, b) => {
+    if (a.type === 'folder' && b.type === 'file') return -1;
+    if (a.type === 'file' && b.type === 'folder') return 1;
+    return a.name.localeCompare(b.name);
+  }).map(file => ({
+    ...file,
+    children: file.children ? sortFiles(file.children) : undefined
+  }));
+};
+
+// Helper to generate unique ID
+const generateId = () => Math.random().toString(36).substring(2, 9);
+
+// Helper to get language from filename
+const getLanguageFromName = (name: string): string => {
+  const ext = name.split('.').pop()?.toLowerCase();
+  const langMap: Record<string, string> = {
+    'c': 'c', 'cpp': 'cpp', 'h': 'c', 'java': 'java', 'js': 'javascript',
+    'mjs': 'javascript', 'cjs': 'javascript', 'ts': 'typescript', 'tsx': 'typescript',
+    'py': 'python', 'rb': 'ruby', 'go': 'go', 'rs': 'rust', 'php': 'php',
+    'swift': 'swift', 'kt': 'kotlin', 'dart': 'dart', 'cs': 'csharp', 'scala': 'scala',
+    'html': 'html', 'htm': 'html', 'css': 'css', 'scss': 'scss', 'sass': 'sass',
+    'less': 'less', 'jsx': 'javascript', 'vue': 'vue', 'svelte': 'svelte',
+    'json': 'json', 'yaml': 'yaml', 'yml': 'yaml', 'xml': 'xml', 'toml': 'toml',
+    'md': 'markdown', 'txt': 'plaintext', 'csv': 'plaintext', 'log': 'plaintext',
+    'sh': 'shell', 'bash': 'shell', 'zsh': 'shell', 'ps1': 'powershell',
+  };
+  return langMap[ext || ''] || 'plaintext';
+};
+
 interface IDEState {
   // Sidebar
   activeActivity: ActivityItem;
@@ -61,6 +93,13 @@ interface IDEState {
   pauseDebug: () => void;
   continueDebug: () => void;
   stopDebug: () => void;
+
+  // File operations
+  createFile: (parentId: string | null, name: string) => void;
+  createFolder: (parentId: string | null, name: string) => void;
+  renameNode: (nodeId: string, newName: string) => void;
+  deleteNode: (nodeId: string) => void;
+  moveNode: (nodeId: string, targetParentId: string | null) => void;
 }
 
 const initialFiles: FileNode[] = [
@@ -309,5 +348,173 @@ export const useIDEStore = create<IDEState>((set, get) => ({
   stopDebug: () =>
     set({
       debugState: { isRunning: false, isPaused: false },
+    }),
+
+  // File operations
+  createFile: (parentId, name) =>
+    set((state) => {
+      const newFile: FileNode = {
+        id: generateId(),
+        name,
+        type: 'file',
+        content: '',
+        language: getLanguageFromName(name),
+      };
+
+      if (!parentId) {
+        return { files: sortFiles([...state.files, newFile]) };
+      }
+
+      const addToParent = (nodes: FileNode[]): FileNode[] =>
+        nodes.map((node) => {
+          if (node.id === parentId && node.type === 'folder') {
+            return {
+              ...node,
+              children: sortFiles([...(node.children || []), newFile]),
+            };
+          }
+          if (node.children) {
+            return { ...node, children: addToParent(node.children) };
+          }
+          return node;
+        });
+
+      return { 
+        files: sortFiles(addToParent(state.files)),
+        expandedFolders: new Set([...state.expandedFolders, parentId])
+      };
+    }),
+
+  createFolder: (parentId, name) =>
+    set((state) => {
+      const newFolder: FileNode = {
+        id: generateId(),
+        name,
+        type: 'folder',
+        children: [],
+      };
+
+      if (!parentId) {
+        return { files: sortFiles([...state.files, newFolder]) };
+      }
+
+      const addToParent = (nodes: FileNode[]): FileNode[] =>
+        nodes.map((node) => {
+          if (node.id === parentId && node.type === 'folder') {
+            return {
+              ...node,
+              children: sortFiles([...(node.children || []), newFolder]),
+            };
+          }
+          if (node.children) {
+            return { ...node, children: addToParent(node.children) };
+          }
+          return node;
+        });
+
+      return { 
+        files: sortFiles(addToParent(state.files)),
+        expandedFolders: new Set([...state.expandedFolders, parentId])
+      };
+    }),
+
+  renameNode: (nodeId, newName) =>
+    set((state) => {
+      const renameInTree = (nodes: FileNode[]): FileNode[] =>
+        sortFiles(nodes.map((node) => {
+          if (node.id === nodeId) {
+            return {
+              ...node,
+              name: newName,
+              language: node.type === 'file' ? getLanguageFromName(newName) : node.language,
+            };
+          }
+          if (node.children) {
+            return { ...node, children: renameInTree(node.children) };
+          }
+          return node;
+        }));
+
+      // Also update open tabs
+      const updatedTabs = state.openTabs.map((tab) =>
+        tab.id === nodeId ? { ...tab, name: newName, language: getLanguageFromName(newName) } : tab
+      );
+
+      return { files: renameInTree(state.files), openTabs: updatedTabs };
+    }),
+
+  deleteNode: (nodeId) =>
+    set((state) => {
+      const deleteFromTree = (nodes: FileNode[]): FileNode[] =>
+        nodes
+          .filter((node) => node.id !== nodeId)
+          .map((node) => ({
+            ...node,
+            children: node.children ? deleteFromTree(node.children) : undefined,
+          }));
+
+      // Close tab if open
+      const newTabs = state.openTabs.filter((tab) => tab.id !== nodeId);
+      let newActiveId = state.activeTabId;
+      if (state.activeTabId === nodeId) {
+        newActiveId = newTabs.length > 0 ? newTabs[0].id : null;
+      }
+
+      return {
+        files: deleteFromTree(state.files),
+        openTabs: newTabs,
+        activeTabId: newActiveId,
+      };
+    }),
+
+  moveNode: (nodeId, targetParentId) =>
+    set((state) => {
+      let movedNode: FileNode | null = null;
+
+      // Find and remove node from original location
+      const removeFromTree = (nodes: FileNode[]): FileNode[] =>
+        nodes
+          .filter((node) => {
+            if (node.id === nodeId) {
+              movedNode = node;
+              return false;
+            }
+            return true;
+          })
+          .map((node) => ({
+            ...node,
+            children: node.children ? removeFromTree(node.children) : undefined,
+          }));
+
+      let newFiles = removeFromTree(state.files);
+
+      if (!movedNode) return state;
+
+      // Add to new location
+      if (!targetParentId) {
+        newFiles = sortFiles([...newFiles, movedNode]);
+      } else {
+        const addToParent = (nodes: FileNode[]): FileNode[] =>
+          nodes.map((node) => {
+            if (node.id === targetParentId && node.type === 'folder') {
+              return {
+                ...node,
+                children: sortFiles([...(node.children || []), movedNode!]),
+              };
+            }
+            if (node.children) {
+              return { ...node, children: addToParent(node.children) };
+            }
+            return node;
+          });
+        newFiles = sortFiles(addToParent(newFiles));
+      }
+
+      return { 
+        files: newFiles,
+        expandedFolders: targetParentId 
+          ? new Set([...state.expandedFolders, targetParentId])
+          : state.expandedFolders
+      };
     }),
 }));
