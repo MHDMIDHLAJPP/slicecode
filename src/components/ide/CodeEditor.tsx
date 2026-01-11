@@ -256,15 +256,30 @@ export function CodeEditor() {
             onScroll={handleScroll}
             onClick={updateCursorPosition}
             onKeyUp={updateCursorPosition}
+            onTouchStart={updateCursorPosition}
+            onTouchEnd={(e) => {
+              // Small delay to let the touch settle before updating cursor
+              setTimeout(updateCursorPosition, 50);
+            }}
+            onSelect={updateCursorPosition}
+            onFocus={updateCursorPosition}
             className={cn(
               'absolute inset-0 w-full h-full py-2 px-4 bg-transparent text-transparent caret-foreground resize-none outline-none ide-scrollbar',
+              'touch-manipulation select-text',
               editorWordWrap && 'whitespace-pre-wrap break-words'
             )}
-            style={editorStyle}
+            style={{
+              ...editorStyle,
+              WebkitUserSelect: 'text',
+              userSelect: 'text',
+              WebkitTouchCallout: 'none',
+              WebkitTapHighlightColor: 'transparent',
+            }}
             spellCheck={false}
             autoCapitalize="off"
             autoCorrect="off"
             autoComplete="off"
+            inputMode="text"
           />
         </div>
 
