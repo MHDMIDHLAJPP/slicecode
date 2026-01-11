@@ -57,33 +57,64 @@ export default {
           border: "hsl(var(--sidebar-border))",
           ring: "hsl(var(--sidebar-ring))",
         },
+        ide: {
+          bg: "hsl(var(--ide-bg))",
+          sidebar: "hsl(var(--ide-sidebar))",
+          activityBar: "hsl(var(--ide-activity-bar))",
+          editor: "hsl(var(--ide-editor))",
+          panel: "hsl(var(--ide-panel))",
+          tabActive: "hsl(var(--ide-tab-active))",
+          tabInactive: "hsl(var(--ide-tab-inactive))",
+          selection: "hsl(var(--ide-selection))",
+          lineNumber: "hsl(var(--ide-line-number))",
+          lineHighlight: "hsl(var(--ide-line-highlight))",
+        },
+        status: {
+          success: "hsl(var(--status-success))",
+          warning: "hsl(var(--status-warning))",
+          error: "hsl(var(--status-error))",
+          info: "hsl(var(--status-info))",
+        },
+        syntax: {
+          keyword: "hsl(var(--syntax-keyword))",
+          string: "hsl(var(--syntax-string))",
+          number: "hsl(var(--syntax-number))",
+          comment: "hsl(var(--syntax-comment))",
+          function: "hsl(var(--syntax-function))",
+          variable: "hsl(var(--syntax-variable))",
+          type: "hsl(var(--syntax-type))",
+          operator: "hsl(var(--syntax-operator))",
+          punctuation: "hsl(var(--syntax-punctuation))",
+          preprocessor: "hsl(var(--syntax-preprocessor))",
+        },
       },
       borderRadius: {
         lg: "var(--radius)",
         md: "calc(var(--radius) - 2px)",
         sm: "calc(var(--radius) - 4px)",
       },
+      fontFamily: {
+        mono: ["'JetBrains Mono'", "'Fira Code'", "Consolas", "monospace"],
+        sans: ["'Inter'", "system-ui", "sans-serif"],
+      },
       keyframes: {
         "accordion-down": {
-          from: {
-            height: "0",
-          },
-          to: {
-            height: "var(--radix-accordion-content-height)",
-          },
+          from: { height: "0" },
+          to: { height: "var(--radix-accordion-content-height)" },
         },
         "accordion-up": {
-          from: {
-            height: "var(--radix-accordion-content-height)",
-          },
-          to: {
-            height: "0",
-          },
+          from: { height: "var(--radix-accordion-content-height)" },
+          to: { height: "0" },
+        },
+        blink: {
+          "0%, 50%": { opacity: "1" },
+          "51%, 100%": { opacity: "0" },
         },
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
         "accordion-up": "accordion-up 0.2s ease-out",
+        blink: "blink 1s step-end infinite",
       },
     },
   },
