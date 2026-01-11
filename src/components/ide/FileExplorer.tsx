@@ -1,46 +1,9 @@
 import { useState } from 'react';
-import { ChevronDown, ChevronRight, File, Folder, FolderOpen, FileCode, FileText, Plus, FolderPlus, RefreshCw, Trash2, Pencil } from 'lucide-react';
+import { ChevronDown, ChevronRight, Folder, FolderOpen, Plus, FolderPlus, RefreshCw, Trash2, Pencil } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useIDEStore } from '@/store/ideStore';
+import { getFileIcon, getFileColor } from '@/lib/fileIcons';
 import type { FileNode } from '@/types/ide';
-
-const getFileIcon = (name: string) => {
-  const ext = name.split('.').pop()?.toLowerCase();
-  switch (ext) {
-    case 'c':
-    case 'h':
-    case 'cpp':
-    case 'js':
-    case 'ts':
-    case 'jsx':
-    case 'tsx':
-      return FileCode;
-    case 'txt':
-    case 'md':
-      return FileText;
-    default:
-      return File;
-  }
-};
-
-const getFileColor = (name: string) => {
-  const ext = name.split('.').pop()?.toLowerCase();
-  switch (ext) {
-    case 'c':
-      return 'text-syntax-keyword';
-    case 'h':
-      return 'text-syntax-preprocessor';
-    case 'js':
-      return 'text-status-warning';
-    case 'ts':
-    case 'tsx':
-      return 'text-syntax-keyword';
-    case 'css':
-      return 'text-syntax-function';
-    default:
-      return 'text-muted-foreground';
-  }
-};
 
 interface FileTreeItemProps {
   node: FileNode;
