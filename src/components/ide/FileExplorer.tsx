@@ -2,7 +2,7 @@ import { useState, useRef, useEffect } from 'react';
 import { ChevronDown, ChevronRight, Plus, FolderPlus, RefreshCw, Trash2, Pencil, Check, X, FilePlus } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useIDEStore } from '@/store/ideStore';
-import { getVSCodeFileIcon, getVSCodeFolderIcon } from './icons/FileIcons';
+import { getFileIcon, getFileColor, getFolderIcon, getFolderColor } from '@/lib/fileIcons';
 import type { FileNode } from '@/types/ide';
 
 interface FileTreeItemProps {
@@ -37,10 +37,13 @@ function FileTreeItem({ node, depth }: FileTreeItemProps) {
   const isSelected = activeTabId === node.id;
   const isRenaming = renamingItemId === node.id;
 
-  // Get VS Code style icon
+  // Get file/folder icon
   const IconComponent = node.type === 'folder'
-    ? getVSCodeFolderIcon(node.name, isExpanded)
-    : getVSCodeFileIcon(node.name);
+    ? getFolderIcon(node.name, isExpanded)
+    : getFileIcon(node.name);
+  const iconColor = node.type === 'folder'
+    ? getFolderColor(node.name)
+    : getFileColor(node.name);
 
   useEffect(() => {
     if (isRenaming && renameInputRef.current) {
@@ -116,7 +119,7 @@ function FileTreeItem({ node, depth }: FileTreeItemProps) {
         {node.type === 'file' && <span className="w-4" />}
         
         <span className="shrink-0">
-          <IconComponent />
+          <IconComponent className="w-4 h-4" style={{ color: iconColor }} />
         </span>
         
         {isRenaming ? (
@@ -228,8 +231,11 @@ function CreateItemInput({ depth, type, onConfirm, onCancel }: CreateItemInputPr
   };
 
   const IconComponent = type === 'folder' 
-    ? getVSCodeFolderIcon('new', false)
-    : getVSCodeFileIcon(value || 'untitled');
+    ? getFolderIcon('new', false)
+    : getFileIcon(value || 'untitled');
+  const iconColor = type === 'folder'
+    ? getFolderColor('new')
+    : getFileColor(value || 'untitled');
 
   return (
     <div
@@ -244,7 +250,7 @@ function CreateItemInput({ depth, type, onConfirm, onCancel }: CreateItemInputPr
         <span className="w-4" />
       )}
       <span className="shrink-0">
-        <IconComponent />
+        <IconComponent className="w-4 h-4" style={{ color: iconColor }} />
       </span>
       <input
         ref={inputRef}
