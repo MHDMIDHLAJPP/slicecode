@@ -7,12 +7,38 @@ import { EditorTabs } from './EditorTabs';
 import { CodeEditor } from './CodeEditor';
 import { BottomPanel } from './BottomPanel';
 import { SettingsPage } from './SettingsPage';
+import { SearchPanel } from './panels/SearchPanel';
+import { SourceControlPanel } from './panels/SourceControlPanel';
+import { RunDebugPanel } from './panels/RunDebugPanel';
+import { ExtensionsPanel } from './panels/ExtensionsPanel';
+import { TerminalSidePanel } from './panels/TerminalSidePanel';
 import { cn } from '@/lib/utils';
 
 export function IDELayout() {
-  const { sidebarVisible } = useIDEStore();
+  const { sidebarVisible, activeActivity } = useIDEStore();
   const { compactMode, animationsEnabled } = useSettingsStore();
   const [settingsOpen, setSettingsOpen] = useState(false);
+
+  const renderSidePanel = () => {
+    if (!sidebarVisible) return null;
+    
+    switch (activeActivity) {
+      case 'explorer':
+        return <FileExplorer />;
+      case 'search':
+        return <SearchPanel />;
+      case 'source-control':
+        return <SourceControlPanel />;
+      case 'run':
+        return <RunDebugPanel />;
+      case 'terminal':
+        return <TerminalSidePanel />;
+      case 'extensions':
+        return <ExtensionsPanel />;
+      default:
+        return <FileExplorer />;
+    }
+  };
 
   return (
     <div className="h-screen w-full flex flex-col bg-ide-bg overflow-hidden relative">
@@ -27,8 +53,8 @@ export function IDELayout() {
         {/* Activity Bar */}
         <ActivityBar onOpenSettings={() => setSettingsOpen(true)} />
 
-        {/* Sidebar (File Explorer) */}
-        {sidebarVisible && <FileExplorer />}
+        {/* Sidebar - Dynamic based on activity */}
+        {renderSidePanel()}
 
         {/* Main Editor Area */}
         <div className={cn(
