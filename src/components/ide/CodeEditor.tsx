@@ -1,3 +1,4 @@
+import { useRef } from 'react';
 import { useIDEStore } from '@/store/ideStore';
 import { useSettingsStore, fontStyles } from '@/store/settingsStore';
 import { Settings, RotateCcw } from 'lucide-react';
@@ -75,8 +76,18 @@ export function CodeEditor() {
     compactMode 
   } = useSettingsStore();
   
+  const lineNumbersRef = useRef<HTMLDivElement>(null);
+  const codeContentRef = useRef<HTMLDivElement>(null);
+  
   const activeTab = openTabs.find((tab) => tab.id === activeTabId);
   const fontFamily = fontStyles.find(f => f.id === editorFontStyle)?.value || fontStyles[0].value;
+
+  // Sync scroll between line numbers and code content
+  const handleCodeScroll = () => {
+    if (lineNumbersRef.current && codeContentRef.current) {
+      lineNumbersRef.current.scrollTop = codeContentRef.current.scrollTop;
+    }
+  };
 
   if (!activeTab) {
     return (
@@ -127,10 +138,11 @@ export function CodeEditor() {
 
       {/* Editor content */}
       <div className="flex-1 flex overflow-hidden">
-        {/* Line numbers */}
+        {/* Line numbers - synced scroll with code */}
         {editorLineNumbers && (
           <div 
-            className="py-2 px-3 text-right select-none bg-ide-editor border-r border-border/50 shrink-0 text-ide-lineNumber"
+            ref={lineNumbersRef}
+            className="py-2 px-3 text-right select-none bg-ide-editor border-r border-border/50 shrink-0 text-ide-lineNumber overflow-hidden"
             style={editorStyle}
           >
             {lines.map((_, i) => (
@@ -142,10 +154,14 @@ export function CodeEditor() {
         )}
 
         {/* Code content */}
-        <div className={cn(
-          'flex-1 overflow-auto ide-scrollbar',
-          editorWordWrap && 'whitespace-pre-wrap break-words'
-        )}>
+        <div 
+          ref={codeContentRef}
+          className={cn(
+            'flex-1 overflow-auto ide-scrollbar',
+            editorWordWrap && 'whitespace-pre-wrap break-words'
+          )}
+          onScroll={handleCodeScroll}
+        >
           <pre 
             className="py-2 px-4 text-foreground min-h-full"
             style={editorStyle}
