@@ -22,6 +22,7 @@ interface FileTreeItemProps {
   onDragEnd: () => void;
   dropTargetId: string | null;
   onDragOver: (nodeId: string | null) => void;
+  onDropOnFolder: (folderId: string) => void;
 }
 
 function FileTreeItem({
@@ -41,6 +42,7 @@ function FileTreeItem({
   onDragEnd,
   dropTargetId,
   onDragOver,
+  onDropOnFolder,
 }: FileTreeItemProps) {
   const { expandedFolders, selectFile, toggleFolder, activeTabId, deleteNode } = useIDEStore();
   const [isHovered, setIsHovered] = useState(false);
@@ -134,6 +136,9 @@ function FileTreeItem({
   const handleDrop = (e: DragEvent) => {
     e.preventDefault();
     e.stopPropagation();
+    if (node.type === 'folder' && draggedId && draggedId !== node.id) {
+      onDropOnFolder(node.id);
+    }
     onDragOver(null);
   };
 
@@ -306,6 +311,7 @@ function FileTreeItem({
               onDragEnd={onDragEnd}
               dropTargetId={dropTargetId}
               onDragOver={onDragOver}
+              onDropOnFolder={onDropOnFolder}
             />
           ))}
         </div>
@@ -347,10 +353,15 @@ export function FileExplorer() {
     }
   };
 
-  const handleDrop = (targetId: string | null) => {
-    if (draggedId && targetId) {
-      moveNode(draggedId, targetId);
+  const handleDropOnFolder = (folderId: string) => {
+    if (draggedId && folderId) {
+      moveNode(draggedId, folderId);
+      setDraggedId(null);
+      setDropTargetId(null);
     }
+  };
+
+  const handleDragEnd = () => {
     setDraggedId(null);
     setDropTargetId(null);
   };
@@ -479,9 +490,10 @@ export function FileExplorer() {
             onCancelCreate={() => { setCreatingIn(null); setCreatingType(null); }}
             draggedId={draggedId}
             onDragStart={setDraggedId}
-            onDragEnd={() => { handleDrop(dropTargetId); }}
+            onDragEnd={handleDragEnd}
             dropTargetId={dropTargetId}
             onDragOver={setDropTargetId}
+            onDropOnFolder={handleDropOnFolder}
           />
         ))}
       </div>
