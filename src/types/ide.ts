@@ -17,7 +17,7 @@ export interface EditorTab {
 
 export type BottomPanelTab = 'terminal' | 'run' | 'preview' | 'debug';
 
-export type ActivityItem = 'explorer' | 'search' | 'source-control' | 'run' | 'terminal' | 'extensions';
+export type ActivityItem = 'explorer' | 'search' | 'source-control' | 'run' | 'terminal' | 'extensions' | 'settings';
 
 export interface TerminalLine {
   id: string;

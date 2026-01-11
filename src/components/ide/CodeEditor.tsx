@@ -1,26 +1,24 @@
 import { useIDEStore } from '@/store/ideStore';
+import { useSettingsStore, fontStyles } from '@/store/settingsStore';
 import { Settings, RotateCcw } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 // Simple syntax highlighter for C code
 function highlightC(code: string): React.ReactNode[] {
   const lines = code.split('\n');
   
   return lines.map((line, lineIndex) => {
-    const tokens: React.ReactNode[] = [];
-    let remaining = line;
-    let key = 0;
-
     // Preprocessor directives
-    if (remaining.trim().startsWith('#')) {
+    if (line.trim().startsWith('#')) {
       return (
         <span key={lineIndex} className="text-syntax-preprocessor">{line}</span>
       );
     }
 
     // Comments
-    const commentMatch = remaining.match(/\/\/.*/);
+    const commentMatch = line.match(/\/\/.*/);
     if (commentMatch) {
-      const beforeComment = remaining.slice(0, commentMatch.index);
+      const beforeComment = line.slice(0, commentMatch.index);
       const comment = commentMatch[0];
       
       return (
@@ -38,7 +36,6 @@ function highlightC(code: string): React.ReactNode[] {
 function highlightCLine(line: string): React.ReactNode[] {
   const tokens: React.ReactNode[] = [];
   const keywords = ['int', 'char', 'void', 'return', 'if', 'else', 'while', 'for', 'switch', 'case', 'break', 'continue', 'NULL', 'EOF', 'FILE'];
-  const types = ['FILE', 'int', 'char', 'void', 'float', 'double'];
   
   // Simple tokenization
   const pattern = /(".*?"|'.'|\b\d+\b|\b[a-zA-Z_][a-zA-Z0-9_]*\b|[{}();,=<>+\-*/&|!]|\s+)/g;
@@ -67,7 +64,19 @@ function highlightCLine(line: string): React.ReactNode[] {
 
 export function CodeEditor() {
   const { openTabs, activeTabId, updateTabContent } = useIDEStore();
+  const { 
+    editorFontSize, 
+    editorFontStyle, 
+    editorLineHeight, 
+    editorMinimap,
+    editorLineNumbers,
+    editorWordWrap,
+    showStatusBar,
+    compactMode 
+  } = useSettingsStore();
+  
   const activeTab = openTabs.find((tab) => tab.id === activeTabId);
+  const fontFamily = fontStyles.find(f => f.id === editorFontStyle)?.value || fontStyles[0].value;
 
   if (!activeTab) {
     return (
@@ -84,58 +93,85 @@ export function CodeEditor() {
   const cursorLine = 1;
   const cursorCol = 1;
 
+  const editorStyle = {
+    fontFamily,
+    fontSize: `${editorFontSize}px`,
+    lineHeight: editorLineHeight,
+  };
+
+  const lineHeightPx = editorFontSize * editorLineHeight;
+
   return (
     <div className="flex-1 flex flex-col bg-ide-editor overflow-hidden">
       {/* Status bar */}
-      <div className="flex items-center justify-between px-4 py-1 bg-ide-bg border-b border-border text-xs text-muted-foreground">
-        <div className="flex items-center gap-4">
-          <span className="uppercase">{activeTab.language}</span>
-          <span>Line {cursorLine}, Col {cursorCol}</span>
+      {showStatusBar && (
+        <div className={cn(
+          'flex items-center justify-between px-4 bg-ide-bg border-b border-border text-xs text-muted-foreground',
+          compactMode ? 'py-0.5' : 'py-1'
+        )}>
+          <div className="flex items-center gap-4">
+            <span className="uppercase">{activeTab.language}</span>
+            <span>Line {cursorLine}, Col {cursorCol}</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <span>Live Preview</span>
+            <button className="p-1 hover:bg-secondary rounded">
+              <RotateCcw className="w-3.5 h-3.5" />
+            </button>
+            <button className="p-1 hover:bg-secondary rounded">
+              <Settings className="w-3.5 h-3.5" />
+            </button>
+          </div>
         </div>
-        <div className="flex items-center gap-2">
-          <span>Live Preview</span>
-          <button className="p-1 hover:bg-secondary rounded">
-            <RotateCcw className="w-3.5 h-3.5" />
-          </button>
-          <button className="p-1 hover:bg-secondary rounded">
-            <Settings className="w-3.5 h-3.5" />
-          </button>
-        </div>
-      </div>
+      )}
 
       {/* Editor content */}
       <div className="flex-1 flex overflow-hidden">
         {/* Line numbers */}
-        <div className="py-2 px-3 text-right select-none bg-ide-editor border-r border-border/50 shrink-0">
-          {lines.map((_, i) => (
-            <div
-              key={i}
-              className="code-editor text-ide-lineNumber h-[1.6em] leading-[1.6]"
-            >
-              {i + 1}
-            </div>
-          ))}
-        </div>
+        {editorLineNumbers && (
+          <div 
+            className="py-2 px-3 text-right select-none bg-ide-editor border-r border-border/50 shrink-0 text-ide-lineNumber"
+            style={editorStyle}
+          >
+            {lines.map((_, i) => (
+              <div key={i} style={{ height: `${lineHeightPx}px` }}>
+                {i + 1}
+              </div>
+            ))}
+          </div>
+        )}
 
         {/* Code content */}
-        <div className="flex-1 overflow-auto ide-scrollbar">
-          <pre className="py-2 px-4 code-editor text-foreground min-h-full">
+        <div className={cn(
+          'flex-1 overflow-auto ide-scrollbar',
+          editorWordWrap && 'whitespace-pre-wrap break-words'
+        )}>
+          <pre 
+            className="py-2 px-4 text-foreground min-h-full"
+            style={editorStyle}
+          >
             {lines.map((line, i) => (
-              <div key={i} className="h-[1.6em] leading-[1.6] hover:bg-ide-lineHighlight">
+              <div 
+                key={i} 
+                className="hover:bg-ide-lineHighlight"
+                style={{ height: `${lineHeightPx}px` }}
+              >
                 {activeTab.language === 'c' ? highlightC(line + '\n') : line}
               </div>
             ))}
           </pre>
         </div>
 
-        {/* Minimap placeholder */}
-        <div className="w-24 bg-ide-bg/50 shrink-0 hidden lg:block">
-          <div className="p-2 text-[4px] leading-[1.2] opacity-50 overflow-hidden">
-            {lines.slice(0, 100).map((line, i) => (
-              <div key={i} className="truncate text-muted-foreground">{line || ' '}</div>
-            ))}
+        {/* Minimap */}
+        {editorMinimap && (
+          <div className="w-24 bg-ide-bg/50 shrink-0 hidden lg:block">
+            <div className="p-2 text-[4px] leading-[1.2] opacity-50 overflow-hidden">
+              {lines.slice(0, 100).map((line, i) => (
+                <div key={i} className="truncate text-muted-foreground">{line || ' '}</div>
+              ))}
+            </div>
           </div>
-        </div>
+        )}
       </div>
     </div>
   );
