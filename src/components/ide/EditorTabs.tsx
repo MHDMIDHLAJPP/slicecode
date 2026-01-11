@@ -13,7 +13,7 @@ export function EditorTabs() {
   return (
     <div className="flex items-center bg-ide-bg border-b border-border overflow-x-auto ide-scrollbar">
       {openTabs.map((tab) => {
-        const IconComponent = getFileIcon(tab.name);
+        const Icon = getFileIcon(tab.name);
         const iconColor = getFileColor(tab.name);
         const isActive = tab.id === activeTabId;
 
@@ -28,9 +28,7 @@ export function EditorTabs() {
             )}
             onClick={() => setActiveTab(tab.id)}
           >
-            <span className="shrink-0">
-              <IconComponent className="w-4 h-4" style={{ color: iconColor }} />
-            </span>
+            <Icon className={cn('w-4 h-4 shrink-0', iconColor)} strokeWidth={1.5} />
             <span className="text-sm truncate max-w-32">{tab.name}</span>
             {tab.isDirty && (
               <span className="w-2 h-2 rounded-full bg-foreground shrink-0" />
