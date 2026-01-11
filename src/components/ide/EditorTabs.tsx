@@ -1,42 +1,7 @@
-import { X, FileCode, FileText, File } from 'lucide-react';
+import { X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useIDEStore } from '@/store/ideStore';
-
-const getFileIcon = (name: string) => {
-  const ext = name.split('.').pop()?.toLowerCase();
-  switch (ext) {
-    case 'c':
-    case 'h':
-    case 'cpp':
-    case 'js':
-    case 'ts':
-    case 'jsx':
-    case 'tsx':
-      return FileCode;
-    case 'txt':
-    case 'md':
-      return FileText;
-    default:
-      return File;
-  }
-};
-
-const getFileColor = (name: string) => {
-  const ext = name.split('.').pop()?.toLowerCase();
-  switch (ext) {
-    case 'c':
-      return 'text-syntax-keyword';
-    case 'h':
-      return 'text-syntax-preprocessor';
-    case 'js':
-      return 'text-status-warning';
-    case 'ts':
-    case 'tsx':
-      return 'text-syntax-keyword';
-    default:
-      return 'text-muted-foreground';
-  }
-};
+import { getFileIcon, getFileColor } from '@/lib/fileIcons';
 
 export function EditorTabs() {
   const { openTabs, activeTabId, setActiveTab, closeTab } = useIDEStore();
