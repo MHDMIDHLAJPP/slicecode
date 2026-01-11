@@ -34,6 +34,10 @@ interface IDEState {
   debugState: DebugState;
   debugOutput: TerminalLine[];
 
+  // File creation state
+  creatingItem: { parentId: string | null; type: 'file' | 'folder' } | null;
+  renamingItemId: string | null;
+
   // Actions
   setActiveActivity: (activity: ActivityItem) => void;
   toggleSidebar: () => void;
@@ -61,6 +65,17 @@ interface IDEState {
   pauseDebug: () => void;
   continueDebug: () => void;
   stopDebug: () => void;
+
+  // File management
+  startCreatingFile: (parentId: string | null) => void;
+  startCreatingFolder: (parentId: string | null) => void;
+  cancelCreating: () => void;
+  confirmCreate: (name: string) => void;
+  startRenaming: (itemId: string) => void;
+  cancelRenaming: () => void;
+  confirmRename: (newName: string) => void;
+  deleteItem: (itemId: string) => void;
+  moveItem: (itemId: string, newParentId: string | null) => void;
 }
 
 const initialFiles: FileNode[] = [
@@ -193,6 +208,9 @@ export const useIDEStore = create<IDEState>((set, get) => ({
   debugState: { isRunning: false, isPaused: false },
   debugOutput: [],
 
+  creatingItem: null,
+  renamingItemId: null,
+
   // Actions
   setActiveActivity: (activity) => set({ activeActivity: activity }),
   toggleSidebar: () => set((state) => ({ sidebarVisible: !state.sidebarVisible })),
@@ -310,4 +328,180 @@ export const useIDEStore = create<IDEState>((set, get) => ({
     set({
       debugState: { isRunning: false, isPaused: false },
     }),
+
+  // File management actions
+  startCreatingFile: (parentId) => {
+    if (parentId) {
+      const newExpanded = new Set(get().expandedFolders);
+      newExpanded.add(parentId);
+      set({ expandedFolders: newExpanded });
+    }
+    set({ creatingItem: { parentId, type: 'file' }, renamingItemId: null });
+  },
+
+  startCreatingFolder: (parentId) => {
+    if (parentId) {
+      const newExpanded = new Set(get().expandedFolders);
+      newExpanded.add(parentId);
+      set({ expandedFolders: newExpanded });
+    }
+    set({ creatingItem: { parentId, type: 'folder' }, renamingItemId: null });
+  },
+
+  cancelCreating: () => set({ creatingItem: null }),
+
+  confirmCreate: (name) => {
+    const { creatingItem, files } = get();
+    if (!creatingItem || !name.trim()) {
+      set({ creatingItem: null });
+      return;
+    }
+
+    const newId = Date.now().toString();
+    const newItem: FileNode = creatingItem.type === 'folder'
+      ? { id: newId, name: name.trim(), type: 'folder', children: [] }
+      : { id: newId, name: name.trim(), type: 'file', content: '', language: getLanguageFromName(name) };
+
+    const addToParent = (nodes: FileNode[], parentId: string | null): FileNode[] => {
+      if (parentId === null) {
+        return [...nodes, newItem];
+      }
+      return nodes.map(node => {
+        if (node.id === parentId && node.type === 'folder') {
+          return { ...node, children: [...(node.children || []), newItem] };
+        }
+        if (node.children) {
+          return { ...node, children: addToParent(node.children, parentId) };
+        }
+        return node;
+      });
+    };
+
+    set({ 
+      files: addToParent(files, creatingItem.parentId), 
+      creatingItem: null 
+    });
+  },
+
+  startRenaming: (itemId) => set({ renamingItemId: itemId, creatingItem: null }),
+
+  cancelRenaming: () => set({ renamingItemId: null }),
+
+  confirmRename: (newName) => {
+    const { renamingItemId, files, openTabs } = get();
+    if (!renamingItemId || !newName.trim()) {
+      set({ renamingItemId: null });
+      return;
+    }
+
+    const renameInTree = (nodes: FileNode[]): FileNode[] => {
+      return nodes.map(node => {
+        if (node.id === renamingItemId) {
+          return { ...node, name: newName.trim(), language: getLanguageFromName(newName) };
+        }
+        if (node.children) {
+          return { ...node, children: renameInTree(node.children) };
+        }
+        return node;
+      });
+    };
+
+    const updatedTabs = openTabs.map(tab => 
+      tab.id === renamingItemId ? { ...tab, name: newName.trim() } : tab
+    );
+
+    set({ 
+      files: renameInTree(files), 
+      openTabs: updatedTabs,
+      renamingItemId: null 
+    });
+  },
+
+  deleteItem: (itemId) => {
+    const { files, openTabs, activeTabId } = get();
+
+    const deleteFromTree = (nodes: FileNode[]): FileNode[] => {
+      return nodes
+        .filter(node => node.id !== itemId)
+        .map(node => {
+          if (node.children) {
+            return { ...node, children: deleteFromTree(node.children) };
+          }
+          return node;
+        });
+    };
+
+    const newTabs = openTabs.filter(tab => tab.id !== itemId);
+    let newActiveId = activeTabId;
+    if (activeTabId === itemId) {
+      newActiveId = newTabs.length > 0 ? newTabs[0].id : null;
+    }
+
+    set({ 
+      files: deleteFromTree(files), 
+      openTabs: newTabs,
+      activeTabId: newActiveId
+    });
+  },
+
+  moveItem: (itemId, newParentId) => {
+    const { files } = get();
+    
+    let movedItem: FileNode | null = null;
+    
+    const removeFromTree = (nodes: FileNode[]): FileNode[] => {
+      return nodes
+        .filter(node => {
+          if (node.id === itemId) {
+            movedItem = node;
+            return false;
+          }
+          return true;
+        })
+        .map(node => {
+          if (node.children) {
+            return { ...node, children: removeFromTree(node.children) };
+          }
+          return node;
+        });
+    };
+
+    let filesWithoutItem = removeFromTree(files);
+    
+    if (!movedItem) return;
+
+    const addToParent = (nodes: FileNode[], parentId: string | null): FileNode[] => {
+      if (parentId === null) {
+        return [...nodes, movedItem!];
+      }
+      return nodes.map(node => {
+        if (node.id === parentId && node.type === 'folder') {
+          return { ...node, children: [...(node.children || []), movedItem!] };
+        }
+        if (node.children) {
+          return { ...node, children: addToParent(node.children, parentId) };
+        }
+        return node;
+      });
+    };
+
+    set({ files: addToParent(filesWithoutItem, newParentId) });
+  },
 }));
+
+// Helper function to determine language from filename
+function getLanguageFromName(name: string): string {
+  const ext = name.split('.').pop()?.toLowerCase();
+  const langMap: Record<string, string> = {
+    c: 'c', cpp: 'cpp', h: 'c', hpp: 'cpp',
+    js: 'javascript', mjs: 'javascript', cjs: 'javascript',
+    ts: 'typescript', tsx: 'typescript', jsx: 'javascript',
+    py: 'python', rb: 'ruby', go: 'go', rs: 'rust',
+    java: 'java', kt: 'kotlin', swift: 'swift',
+    html: 'html', css: 'css', scss: 'scss',
+    json: 'json', yaml: 'yaml', yml: 'yaml',
+    md: 'markdown', txt: 'plaintext',
+    sh: 'shell', bash: 'shell',
+  };
+  return langMap[ext || ''] || 'plaintext';
+}

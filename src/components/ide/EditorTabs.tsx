@@ -1,7 +1,7 @@
 import { X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useIDEStore } from '@/store/ideStore';
-import { getFileIcon, getFileColor } from '@/lib/fileIcons';
+import { getVSCodeFileIcon } from './icons/FileIcons';
 
 export function EditorTabs() {
   const { openTabs, activeTabId, setActiveTab, closeTab } = useIDEStore();
@@ -13,8 +13,7 @@ export function EditorTabs() {
   return (
     <div className="flex items-center bg-ide-bg border-b border-border overflow-x-auto ide-scrollbar">
       {openTabs.map((tab) => {
-        const Icon = getFileIcon(tab.name);
-        const iconColor = getFileColor(tab.name);
+        const IconComponent = getVSCodeFileIcon(tab.name);
         const isActive = tab.id === activeTabId;
 
         return (
@@ -28,7 +27,9 @@ export function EditorTabs() {
             )}
             onClick={() => setActiveTab(tab.id)}
           >
-            <Icon className={cn('w-4 h-4 shrink-0', iconColor)} strokeWidth={1.5} />
+            <span className="shrink-0">
+              <IconComponent />
+            </span>
             <span className="text-sm truncate max-w-32">{tab.name}</span>
             {tab.isDirty && (
               <span className="w-2 h-2 rounded-full bg-foreground shrink-0" />
