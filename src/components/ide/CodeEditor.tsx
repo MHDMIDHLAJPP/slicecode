@@ -1,4 +1,4 @@
-import { useRef } from 'react';
+import { useRef, useState, useEffect, useCallback } from 'react';
 import { useIDEStore } from '@/store/ideStore';
 import { useSettingsStore, fontStyles } from '@/store/settingsStore';
 import { Settings, RotateCcw } from 'lucide-react';
@@ -77,17 +77,79 @@ export function CodeEditor() {
   } = useSettingsStore();
   
   const lineNumbersRef = useRef<HTMLDivElement>(null);
-  const codeContentRef = useRef<HTMLDivElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const highlightRef = useRef<HTMLPreElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
   
   const activeTab = openTabs.find((tab) => tab.id === activeTabId);
   const fontFamily = fontStyles.find(f => f.id === editorFontStyle)?.value || fontStyles[0].value;
 
-  // Sync scroll between line numbers and code content
-  const handleCodeScroll = () => {
-    if (lineNumbersRef.current && codeContentRef.current) {
-      lineNumbersRef.current.scrollTop = codeContentRef.current.scrollTop;
+  const [cursorPosition, setCursorPosition] = useState({ line: 1, col: 1 });
+
+  // Sync scroll between all elements
+  const handleScroll = useCallback(() => {
+    if (textareaRef.current) {
+      const scrollTop = textareaRef.current.scrollTop;
+      const scrollLeft = textareaRef.current.scrollLeft;
+      
+      if (lineNumbersRef.current) {
+        lineNumbersRef.current.scrollTop = scrollTop;
+      }
+      if (highlightRef.current) {
+        highlightRef.current.scrollTop = scrollTop;
+        highlightRef.current.scrollLeft = scrollLeft;
+      }
     }
-  };
+  }, []);
+
+  // Update cursor position
+  const updateCursorPosition = useCallback(() => {
+    if (textareaRef.current) {
+      const text = textareaRef.current.value;
+      const selectionStart = textareaRef.current.selectionStart;
+      const textBeforeCursor = text.substring(0, selectionStart);
+      const lines = textBeforeCursor.split('\n');
+      const line = lines.length;
+      const col = lines[lines.length - 1].length + 1;
+      setCursorPosition({ line, col });
+    }
+  }, []);
+
+  // Handle content change
+  const handleChange = useCallback((e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    if (activeTab) {
+      updateTabContent(activeTab.id, e.target.value);
+    }
+    updateCursorPosition();
+  }, [activeTab, updateTabContent, updateCursorPosition]);
+
+  // Handle tab key for indentation
+  const handleKeyDown = useCallback((e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.key === 'Tab') {
+      e.preventDefault();
+      const textarea = textareaRef.current;
+      if (textarea) {
+        const start = textarea.selectionStart;
+        const end = textarea.selectionEnd;
+        const value = textarea.value;
+        const newValue = value.substring(0, start) + '  ' + value.substring(end);
+        
+        if (activeTab) {
+          updateTabContent(activeTab.id, newValue);
+        }
+        
+        // Set cursor position after the tab
+        setTimeout(() => {
+          textarea.selectionStart = textarea.selectionEnd = start + 2;
+        }, 0);
+      }
+    }
+    updateCursorPosition();
+  }, [activeTab, updateTabContent, updateCursorPosition]);
+
+  useEffect(() => {
+    updateCursorPosition();
+  }, [activeTabId, updateCursorPosition]);
 
   if (!activeTab) {
     return (
@@ -101,8 +163,6 @@ export function CodeEditor() {
   }
 
   const lines = activeTab.content.split('\n');
-  const cursorLine = 1;
-  const cursorCol = 1;
 
   const editorStyle = {
     fontFamily,
@@ -122,7 +182,7 @@ export function CodeEditor() {
         )}>
           <div className="flex items-center gap-4">
             <span className="uppercase">{activeTab.language}</span>
-            <span>Line {cursorLine}, Col {cursorCol}</span>
+            <span>Line {cursorPosition.line}, Col {cursorPosition.col}</span>
           </div>
           <div className="flex items-center gap-2">
             <span>Live Preview</span>
@@ -138,7 +198,7 @@ export function CodeEditor() {
 
       {/* Editor content */}
       <div className="flex-1 flex overflow-hidden">
-        {/* Line numbers - synced scroll with code */}
+        {/* Line numbers */}
         {editorLineNumbers && (
           <div 
             ref={lineNumbersRef}
@@ -146,41 +206,71 @@ export function CodeEditor() {
             style={editorStyle}
           >
             {lines.map((_, i) => (
-              <div key={i} style={{ height: `${lineHeightPx}px` }}>
+              <div 
+                key={i} 
+                style={{ height: `${lineHeightPx}px` }}
+                className={cn(
+                  cursorPosition.line === i + 1 && 'text-foreground'
+                )}
+              >
                 {i + 1}
               </div>
             ))}
           </div>
         )}
 
-        {/* Code content */}
+        {/* Code editor with overlay */}
         <div 
-          ref={codeContentRef}
-          className={cn(
-            'flex-1 overflow-auto ide-scrollbar',
-            editorWordWrap && 'whitespace-pre-wrap break-words'
-          )}
-          onScroll={handleCodeScroll}
+          ref={containerRef}
+          className="flex-1 relative overflow-hidden"
         >
+          {/* Syntax highlighted background */}
           <pre 
-            className="py-2 px-4 text-foreground min-h-full"
+            ref={highlightRef}
+            className={cn(
+              'absolute inset-0 py-2 px-4 text-foreground pointer-events-none overflow-hidden m-0',
+              editorWordWrap && 'whitespace-pre-wrap break-words'
+            )}
             style={editorStyle}
+            aria-hidden="true"
           >
             {lines.map((line, i) => (
               <div 
                 key={i} 
-                className="hover:bg-ide-lineHighlight"
+                className={cn(
+                  cursorPosition.line === i + 1 && 'bg-ide-lineHighlight'
+                )}
                 style={{ height: `${lineHeightPx}px` }}
               >
-                {activeTab.language === 'c' ? highlightC(line + '\n') : line}
+                {activeTab.language === 'c' ? highlightC(line + '\n') : (line || ' ')}
               </div>
             ))}
           </pre>
+
+          {/* Editable textarea overlay */}
+          <textarea
+            ref={textareaRef}
+            value={activeTab.content}
+            onChange={handleChange}
+            onKeyDown={handleKeyDown}
+            onScroll={handleScroll}
+            onClick={updateCursorPosition}
+            onKeyUp={updateCursorPosition}
+            className={cn(
+              'absolute inset-0 w-full h-full py-2 px-4 bg-transparent text-transparent caret-foreground resize-none outline-none ide-scrollbar',
+              editorWordWrap && 'whitespace-pre-wrap break-words'
+            )}
+            style={editorStyle}
+            spellCheck={false}
+            autoCapitalize="off"
+            autoCorrect="off"
+            autoComplete="off"
+          />
         </div>
 
         {/* Minimap */}
         {editorMinimap && (
-          <div className="w-24 bg-ide-bg/50 shrink-0 hidden lg:block">
+          <div className="w-24 bg-ide-bg/50 shrink-0 hidden lg:block overflow-hidden">
             <div className="p-2 text-[4px] leading-[1.2] opacity-50 overflow-hidden">
               {lines.slice(0, 100).map((line, i) => (
                 <div key={i} className="truncate text-muted-foreground">{line || ' '}</div>
