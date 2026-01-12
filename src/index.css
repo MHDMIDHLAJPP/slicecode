@@ -140,7 +140,16 @@
     transition: width 200ms ease-in-out, height 200ms ease-in-out;
   }
 
-  .touch-manipulation {
-    touch-action: manipulation;
-  }
+.touch-manipulation {
+  touch-action: manipulation;
+}
+
+.scrollbar-none {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.scrollbar-none::-webkit-scrollbar {
+  display: none;
+}
 }
