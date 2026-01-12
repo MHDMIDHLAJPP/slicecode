@@ -7,6 +7,7 @@ import { EditorTabs } from './EditorTabs';
 import { CodeEditor } from './CodeEditor';
 import { BottomPanel } from './BottomPanel';
 import { SettingsPage } from './SettingsPage';
+import { MenuBar } from './MenuBar';
 import { SearchPanel } from './panels/SearchPanel';
 import { SourceControlPanel } from './panels/SourceControlPanel';
 import { RunDebugPanel } from './panels/RunDebugPanel';
@@ -139,6 +140,9 @@ export function IDELayout() {
 
   return (
     <div className="h-screen w-full flex flex-col bg-ide-bg overflow-hidden relative">
+      {/* Menu Bar */}
+      <MenuBar />
+
       {settingsOpen && (
         <SettingsPage onClose={() => setSettingsOpen(false)} />
       )}
