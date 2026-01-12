@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useIDEStore } from '@/store/ideStore';
 import { useSettingsStore } from '@/store/settingsStore';
 import { ActivityBar } from './ActivityBar';
@@ -20,6 +20,7 @@ export function IDELayout() {
   const { compactMode, animationsEnabled } = useSettingsStore();
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
+  const [sidebarWidth, setSidebarWidth] = useState(256);
 
   // Detect mobile screen
   useEffect(() => {
@@ -28,6 +29,48 @@ export function IDELayout() {
     window.addEventListener('resize', checkMobile);
     return () => window.removeEventListener('resize', checkMobile);
   }, []);
+
+  const handleSidebarResizeStart = useCallback((clientX: number) => {
+    const startX = clientX;
+    const startWidth = sidebarWidth;
+
+    const onMove = (x: number) => {
+      const delta = x - startX;
+      const newWidth = Math.max(180, Math.min(500, startWidth + delta));
+      setSidebarWidth(newWidth);
+    };
+
+    const onMouseMove = (e: MouseEvent) => onMove(e.clientX);
+    const onTouchMove = (e: TouchEvent) => {
+      e.preventDefault();
+      onMove(e.touches[0].clientX);
+    };
+
+    const onEnd = () => {
+      document.removeEventListener('mousemove', onMouseMove);
+      document.removeEventListener('mouseup', onEnd);
+      document.removeEventListener('touchmove', onTouchMove);
+      document.removeEventListener('touchend', onEnd);
+    };
+
+    document.addEventListener('mousemove', onMouseMove);
+    document.addEventListener('mouseup', onEnd);
+    document.addEventListener('touchmove', onTouchMove, { passive: false });
+    document.addEventListener('touchend', onEnd);
+  }, [sidebarWidth]);
+
+  const ResizeHandle = () => (
+    <div
+      className="w-1 hover:w-1.5 active:w-1.5 cursor-ew-resize hover:bg-primary/50 active:bg-primary/50 transition-all touch-none select-none flex items-center justify-center shrink-0"
+      onMouseDown={(e) => handleSidebarResizeStart(e.clientX)}
+      onTouchStart={(e) => {
+        e.preventDefault();
+        handleSidebarResizeStart(e.touches[0].clientX);
+      }}
+    >
+      <div className="w-0.5 h-8 bg-border rounded-full opacity-0 hover:opacity-100 transition-opacity" />
+    </div>
+  );
 
   const renderSidePanel = () => {
     if (!sidebarVisible) return null;
@@ -81,7 +124,17 @@ export function IDELayout() {
       );
     }
 
-    return panelContent;
+    return (
+      <>
+        <div 
+          className="bg-ide-sidebar border-r border-border overflow-hidden shrink-0"
+          style={{ width: sidebarWidth }}
+        >
+          {panelContent}
+        </div>
+        <ResizeHandle />
+      </>
+    );
   };
 
   return (
