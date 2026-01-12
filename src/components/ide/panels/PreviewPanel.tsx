@@ -1,22 +1,17 @@
-import { RefreshCw, ExternalLink, Smartphone, Monitor, Tablet, ArrowLeft, ArrowRight, Terminal, X, Home } from 'lucide-react';
+import { RefreshCw, ExternalLink, Smartphone, Monitor, Tablet, ArrowLeft, ArrowRight, Home, Wrench } from 'lucide-react';
 import { useState, useRef, useCallback } from 'react';
 import { cn } from '@/lib/utils';
+import { DevTools, ConsoleLog } from './DevTools';
 
 type DeviceView = 'desktop' | 'tablet' | 'mobile';
-
-interface ConsoleLog {
-  type: 'log' | 'error' | 'warn' | 'info';
-  message: string;
-  timestamp: Date;
-}
 
 export function PreviewPanel() {
   const [deviceView, setDeviceView] = useState<DeviceView>('desktop');
   const [url, setUrl] = useState('https://example.com');
   const [inputUrl, setInputUrl] = useState('https://example.com');
-  const [showConsole, setShowConsole] = useState(false);
+  const [showDevTools, setShowDevTools] = useState(false);
   const [consoleLogs, setConsoleLogs] = useState<ConsoleLog[]>([
-    { type: 'info', message: 'Console ready. Logs from the preview will appear here.', timestamp: new Date() },
+    { id: '1', type: 'info', message: 'DevTools initialized. Logs from the preview will appear here.', timestamp: new Date() },
   ]);
   const [history, setHistory] = useState<string[]>(['https://example.com']);
   const [historyIndex, setHistoryIndex] = useState(0);
@@ -29,6 +24,19 @@ export function PreviewPanel() {
     mobile: '375px',
   };
 
+  const addLog = useCallback((type: ConsoleLog['type'], message: string) => {
+    setConsoleLogs(prev => [...prev, { 
+      id: Date.now().toString(), 
+      type, 
+      message, 
+      timestamp: new Date() 
+    }]);
+  }, []);
+
+  const clearLogs = useCallback(() => {
+    setConsoleLogs([]);
+  }, []);
+
   const navigateTo = useCallback((newUrl: string) => {
     let formattedUrl = newUrl.trim();
     if (!formattedUrl.startsWith('http://') && !formattedUrl.startsWith('https://')) {
@@ -39,14 +47,13 @@ export function PreviewPanel() {
     setUrl(formattedUrl);
     setInputUrl(formattedUrl);
     
-    // Add to history
     const newHistory = history.slice(0, historyIndex + 1);
     newHistory.push(formattedUrl);
     setHistory(newHistory);
     setHistoryIndex(newHistory.length - 1);
     
     addLog('info', `Navigating to: ${formattedUrl}`);
-  }, [history, historyIndex]);
+  }, [history, historyIndex, addLog]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -89,15 +96,6 @@ export function PreviewPanel() {
     window.open(url, '_blank');
   };
 
-  const addLog = (type: ConsoleLog['type'], message: string) => {
-    setConsoleLogs(prev => [...prev, { type, message, timestamp: new Date() }]);
-  };
-
-  const clearConsole = () => {
-    setConsoleLogs([]);
-    addLog('info', 'Console cleared');
-  };
-
   const handleIframeLoad = () => {
     setIsLoading(false);
     addLog('log', `Page loaded: ${url}`);
@@ -106,15 +104,6 @@ export function PreviewPanel() {
   const handleIframeError = () => {
     setIsLoading(false);
     addLog('error', `Failed to load: ${url}`);
-  };
-
-  const getLogColor = (type: ConsoleLog['type']) => {
-    switch (type) {
-      case 'error': return 'text-red-400';
-      case 'warn': return 'text-yellow-400';
-      case 'info': return 'text-blue-400';
-      default: return 'text-foreground';
-    }
   };
 
   return (
@@ -164,14 +153,14 @@ export function PreviewPanel() {
             <ExternalLink className="w-4 h-4 text-muted-foreground" />
           </button>
           <button 
-            onClick={() => setShowConsole(!showConsole)} 
+            onClick={() => setShowDevTools(!showDevTools)} 
             className={cn(
               "p-1.5 rounded transition-colors",
-              showConsole ? "bg-primary text-primary-foreground" : "hover:bg-secondary text-muted-foreground"
+              showDevTools ? "bg-primary text-primary-foreground" : "hover:bg-secondary text-muted-foreground"
             )}
-            title="Toggle console"
+            title="Toggle DevTools (F12)"
           >
-            <Terminal className="w-4 h-4" />
+            <Wrench className="w-4 h-4" />
           </button>
         </div>
 
@@ -210,9 +199,10 @@ export function PreviewPanel() {
         </div>
       </div>
 
-      {/* Preview iframe container */}
-      <div className={cn("flex-1 flex flex-col", showConsole && "pb-0")}>
-        <div className="flex-1 flex items-start justify-center p-4 bg-muted/30 overflow-auto">
+      {/* Preview area with optional DevTools */}
+      <div className="flex-1 flex flex-col overflow-hidden">
+        {/* Preview iframe container */}
+        <div className={cn("flex-1 flex items-start justify-center p-4 bg-muted/30 overflow-auto", showDevTools && "h-1/2")}>
           <div 
             className="bg-background border border-border rounded-lg shadow-lg overflow-hidden transition-all"
             style={{ width: deviceWidths[deviceView], maxWidth: '100%', height: '100%' }}
@@ -229,37 +219,16 @@ export function PreviewPanel() {
           </div>
         </div>
 
-        {/* Console panel */}
-        {showConsole && (
-          <div className="h-40 border-t border-border bg-ide-bg flex flex-col">
-            <div className="flex items-center justify-between px-3 py-1.5 border-b border-border">
-              <span className="text-xs font-medium text-muted-foreground">Console</span>
-              <div className="flex items-center gap-1">
-                <button 
-                  onClick={clearConsole}
-                  className="text-xs text-muted-foreground hover:text-foreground px-2 py-0.5 rounded hover:bg-secondary"
-                >
-                  Clear
-                </button>
-                <button 
-                  onClick={() => setShowConsole(false)}
-                  className="p-1 hover:bg-secondary rounded"
-                >
-                  <X className="w-3 h-3 text-muted-foreground" />
-                </button>
-              </div>
-            </div>
-            <div className="flex-1 overflow-auto p-2 font-mono text-xs space-y-0.5">
-              {consoleLogs.map((log, index) => (
-                <div key={index} className={cn("flex gap-2", getLogColor(log.type))}>
-                  <span className="text-muted-foreground opacity-50">
-                    {log.timestamp.toLocaleTimeString()}
-                  </span>
-                  <span className="opacity-70">[{log.type.toUpperCase()}]</span>
-                  <span>{log.message}</span>
-                </div>
-              ))}
-            </div>
+        {/* DevTools panel */}
+        {showDevTools && (
+          <div className="h-1/2 min-h-[200px]">
+            <DevTools
+              onClose={() => setShowDevTools(false)}
+              logs={consoleLogs}
+              onClearLogs={clearLogs}
+              onAddLog={addLog}
+              url={url}
+            />
           </div>
         )}
       </div>
