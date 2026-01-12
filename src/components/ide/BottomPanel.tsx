@@ -37,6 +37,35 @@ export function BottomPanel() {
     );
   }
 
+  const handleResizeStart = (clientY: number) => {
+    const startY = clientY;
+    const startHeight = bottomPanelHeight;
+
+    const onMove = (y: number) => {
+      const delta = startY - y;
+      const newHeight = Math.max(100, Math.min(600, startHeight + delta));
+      useIDEStore.setState({ bottomPanelHeight: newHeight });
+    };
+
+    const onMouseMove = (e: MouseEvent) => onMove(e.clientY);
+    const onTouchMove = (e: TouchEvent) => {
+      e.preventDefault();
+      onMove(e.touches[0].clientY);
+    };
+
+    const onEnd = () => {
+      document.removeEventListener('mousemove', onMouseMove);
+      document.removeEventListener('mouseup', onEnd);
+      document.removeEventListener('touchmove', onTouchMove);
+      document.removeEventListener('touchend', onEnd);
+    };
+
+    document.addEventListener('mousemove', onMouseMove);
+    document.addEventListener('mouseup', onEnd);
+    document.addEventListener('touchmove', onTouchMove, { passive: false });
+    document.addEventListener('touchend', onEnd);
+  };
+
   return (
     <div 
       className="flex flex-col bg-ide-panel border-t border-border shrink-0"
@@ -44,27 +73,14 @@ export function BottomPanel() {
     >
       {/* Resize handle */}
       <div 
-        className="h-1 cursor-ns-resize hover:bg-primary/50 transition-colors flex items-center justify-center"
-        onMouseDown={(e) => {
-          const startY = e.clientY;
-          const startHeight = bottomPanelHeight;
-
-          const onMouseMove = (e: MouseEvent) => {
-            const delta = startY - e.clientY;
-            const newHeight = Math.max(100, Math.min(600, startHeight + delta));
-            useIDEStore.setState({ bottomPanelHeight: newHeight });
-          };
-
-          const onMouseUp = () => {
-            document.removeEventListener('mousemove', onMouseMove);
-            document.removeEventListener('mouseup', onMouseUp);
-          };
-
-          document.addEventListener('mousemove', onMouseMove);
-          document.addEventListener('mouseup', onMouseUp);
+        className="h-3 cursor-ns-resize hover:bg-primary/50 active:bg-primary/50 transition-colors flex items-center justify-center touch-none select-none"
+        onMouseDown={(e) => handleResizeStart(e.clientY)}
+        onTouchStart={(e) => {
+          e.preventDefault();
+          handleResizeStart(e.touches[0].clientY);
         }}
       >
-        <div className="w-8 h-0.5 bg-border rounded-full" />
+        <div className="w-10 h-1 bg-border rounded-full" />
       </div>
 
       {/* Tab bar */}
