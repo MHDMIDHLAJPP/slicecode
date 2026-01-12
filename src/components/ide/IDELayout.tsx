@@ -14,7 +14,7 @@ import { RunDebugPanel } from './panels/RunDebugPanel';
 import { ExtensionsPanel } from './panels/ExtensionsPanel';
 import { TerminalSidePanel } from './panels/TerminalSidePanel';
 import { cn } from '@/lib/utils';
-import { X } from 'lucide-react';
+import { X, GripVertical } from 'lucide-react';
 
 export function IDELayout() {
   const { sidebarVisible, activeActivity, toggleSidebar } = useIDEStore();
@@ -62,14 +62,15 @@ export function IDELayout() {
 
   const ResizeHandle = () => (
     <div
-      className="w-1 hover:w-1.5 active:w-1.5 cursor-ew-resize hover:bg-primary/50 active:bg-primary/50 transition-all touch-none select-none flex items-center justify-center shrink-0"
+      className="w-3 cursor-ew-resize hover:bg-primary/20 active:bg-primary/30 transition-colors touch-none select-none flex items-center justify-center shrink-0"
       onMouseDown={(e) => handleSidebarResizeStart(e.clientX)}
       onTouchStart={(e) => {
         e.preventDefault();
         handleSidebarResizeStart(e.touches[0].clientX);
       }}
+      title="Drag to resize"
     >
-      <div className="w-0.5 h-8 bg-border rounded-full opacity-0 hover:opacity-100 transition-opacity" />
+      <GripVertical className="w-3 h-4 text-muted-foreground" />
     </div>
   );
 

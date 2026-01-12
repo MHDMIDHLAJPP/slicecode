@@ -1,4 +1,4 @@
-import { Terminal as TerminalIcon, Play, Eye, Bug, X, ChevronDown, ChevronUp } from 'lucide-react';
+import { Terminal as TerminalIcon, Play, Eye, Bug, X, ChevronDown, ChevronUp, GripHorizontal } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useIDEStore } from '@/store/ideStore';
 import { TerminalPanel } from './panels/TerminalPanel';
@@ -71,41 +71,45 @@ export function BottomPanel() {
       className="flex flex-col bg-ide-panel border-t border-border shrink-0"
       style={{ height: bottomPanelHeight }}
     >
-      {/* Resize handle */}
-      <div 
-        className="h-3 cursor-ns-resize hover:bg-primary/50 active:bg-primary/50 transition-colors flex items-center justify-center touch-none select-none"
-        onMouseDown={(e) => handleResizeStart(e.clientY)}
-        onTouchStart={(e) => {
-          e.preventDefault();
-          handleResizeStart(e.touches[0].clientY);
-        }}
-      >
-        <div className="w-10 h-1 bg-border rounded-full" />
-      </div>
+      {/* Tab bar with integrated drag handle */}
+      <div className="flex items-center border-b border-border shrink-0">
+        {/* Drag handle */}
+        <div 
+          className="flex items-center justify-center px-2 cursor-ns-resize hover:bg-primary/20 active:bg-primary/30 transition-colors touch-none select-none self-stretch"
+          onMouseDown={(e) => handleResizeStart(e.clientY)}
+          onTouchStart={(e) => {
+            e.preventDefault();
+            handleResizeStart(e.touches[0].clientY);
+          }}
+          title="Drag to resize"
+        >
+          <GripHorizontal className="w-4 h-4 text-muted-foreground" />
+        </div>
 
-      {/* Tab bar */}
-      <div className="flex items-center justify-between border-b border-border px-2">
-        <div className="flex items-center">
-          {tabs.map(({ id, icon: Icon, label }) => (
-            <button
-              key={id}
-              onClick={() => setActiveBottomPanel(id)}
-              className={cn(
-                'flex items-center gap-1.5 px-3 py-2 text-xs font-medium transition-colors border-b-2 -mb-px',
-                activeBottomPanel === id
-                  ? 'text-foreground border-primary'
-                  : 'text-muted-foreground border-transparent hover:text-foreground'
-              )}
-            >
-              <Icon className="w-3.5 h-3.5" />
-              {label}
-            </button>
-          ))}
+        {/* Scrollable tabs */}
+        <div className="flex-1 overflow-x-auto scrollbar-none">
+          <div className="flex items-center">
+            {tabs.map(({ id, icon: Icon, label }) => (
+              <button
+                key={id}
+                onClick={() => setActiveBottomPanel(id)}
+                className={cn(
+                  'flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium transition-colors border-b-2 -mb-px whitespace-nowrap shrink-0',
+                  activeBottomPanel === id
+                    ? 'text-foreground border-primary'
+                    : 'text-muted-foreground border-transparent hover:text-foreground'
+                )}
+              >
+                <Icon className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">{label}</span>
+              </button>
+            ))}
+          </div>
         </div>
 
         <button
           onClick={() => setBottomPanelVisible(false)}
-          className="p-1 hover:bg-secondary rounded text-muted-foreground hover:text-foreground transition-colors"
+          className="p-1.5 hover:bg-secondary rounded text-muted-foreground hover:text-foreground transition-colors shrink-0 mx-1"
         >
           <X className="w-4 h-4" />
         </button>
