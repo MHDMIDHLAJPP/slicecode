@@ -1,8 +1,10 @@
 import { useState, useRef, useEffect, DragEvent } from 'react';
-import { ChevronDown, ChevronRight, Folder, FolderOpen, Plus, FolderPlus, RefreshCw, Trash2, Pencil, Check, X, FilePlus } from 'lucide-react';
+import { ChevronDown, ChevronRight, Folder, FolderOpen, Plus, FolderPlus, RefreshCw, Trash2, Pencil, Check, X, FilePlus, MoreVertical } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useIDEStore } from '@/store/ideStore';
 import { getFileIcon, getFileColor } from '@/lib/fileIcons';
+import { useIsMobile } from '@/hooks/use-mobile';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import type { FileNode } from '@/types/ide';
 
 interface FileTreeItemProps {
@@ -205,48 +207,91 @@ function FileTreeItem({
             
             {isHovered && (
               <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
-                {node.type === 'folder' && (
-                  <>
-                    <button
-                      className="p-0.5 hover:bg-secondary rounded"
-                      onClick={(e) => { 
-                        e.stopPropagation(); 
-                        if (!expandedFolders.has(node.id)) toggleFolder(node.id);
-                        const store = useIDEStore.getState();
-                        store.createFile(node.id, 'untitled');
-                      }}
-                      title="New File in Folder"
-                    >
-                      <FilePlus className="w-3 h-3 text-muted-foreground" />
-                    </button>
-                    <button
-                      className="p-0.5 hover:bg-secondary rounded"
-                      onClick={(e) => { 
-                        e.stopPropagation(); 
-                        if (!expandedFolders.has(node.id)) toggleFolder(node.id);
-                        const store = useIDEStore.getState();
-                        store.createFolder(node.id, 'new-folder');
-                      }}
-                      title="New Folder in Folder"
-                    >
-                      <FolderPlus className="w-3 h-3 text-muted-foreground" />
-                    </button>
-                  </>
-                )}
-                <button
-                  className="p-0.5 hover:bg-secondary rounded"
-                  onClick={(e) => { e.stopPropagation(); setRenameValue(node.name); onStartRename(node.id); }}
-                  title="Rename"
-                >
-                  <Pencil className="w-3 h-3 text-muted-foreground" />
-                </button>
-                <button
-                  className="p-0.5 hover:bg-destructive/20 rounded"
-                  onClick={(e) => { e.stopPropagation(); deleteNode(node.id); }}
-                  title="Delete"
-                >
-                  <Trash2 className="w-3 h-3 text-destructive" />
-                </button>
+                {/* Desktop: inline buttons */}
+                <div className="hidden sm:flex items-center gap-0.5">
+                  {node.type === 'folder' && (
+                    <>
+                      <button
+                        className="p-0.5 hover:bg-secondary rounded"
+                        onClick={(e) => { 
+                          e.stopPropagation(); 
+                          if (!expandedFolders.has(node.id)) toggleFolder(node.id);
+                          const store = useIDEStore.getState();
+                          store.createFile(node.id, 'untitled');
+                        }}
+                        title="New File in Folder"
+                      >
+                        <FilePlus className="w-3 h-3 text-muted-foreground" />
+                      </button>
+                      <button
+                        className="p-0.5 hover:bg-secondary rounded"
+                        onClick={(e) => { 
+                          e.stopPropagation(); 
+                          if (!expandedFolders.has(node.id)) toggleFolder(node.id);
+                          const store = useIDEStore.getState();
+                          store.createFolder(node.id, 'new-folder');
+                        }}
+                        title="New Folder in Folder"
+                      >
+                        <FolderPlus className="w-3 h-3 text-muted-foreground" />
+                      </button>
+                    </>
+                  )}
+                  <button
+                    className="p-0.5 hover:bg-secondary rounded"
+                    onClick={(e) => { e.stopPropagation(); setRenameValue(node.name); onStartRename(node.id); }}
+                    title="Rename"
+                  >
+                    <Pencil className="w-3 h-3 text-muted-foreground" />
+                  </button>
+                  <button
+                    className="p-0.5 hover:bg-destructive/20 rounded"
+                    onClick={(e) => { e.stopPropagation(); deleteNode(node.id); }}
+                    title="Delete"
+                  >
+                    <Trash2 className="w-3 h-3 text-destructive" />
+                  </button>
+                </div>
+
+                {/* Mobile: dropdown menu */}
+                <div className="sm:hidden">
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <button
+                        className="p-0.5 hover:bg-secondary rounded"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <MoreVertical className="w-3.5 h-3.5 text-muted-foreground" />
+                      </button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent side="right" align="start" className="z-50 bg-popover border border-border shadow-lg min-w-[140px]">
+                      {node.type === 'folder' && (
+                        <>
+                          <DropdownMenuItem onClick={() => {
+                            if (!expandedFolders.has(node.id)) toggleFolder(node.id);
+                            const store = useIDEStore.getState();
+                            store.createFile(node.id, 'untitled');
+                          }}>
+                            <FilePlus className="w-3.5 h-3.5 mr-2" /> New File
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => {
+                            if (!expandedFolders.has(node.id)) toggleFolder(node.id);
+                            const store = useIDEStore.getState();
+                            store.createFolder(node.id, 'new-folder');
+                          }}>
+                            <FolderPlus className="w-3.5 h-3.5 mr-2" /> New Folder
+                          </DropdownMenuItem>
+                        </>
+                      )}
+                      <DropdownMenuItem onClick={() => { setRenameValue(node.name); onStartRename(node.id); }}>
+                        <Pencil className="w-3.5 h-3.5 mr-2" /> Rename
+                      </DropdownMenuItem>
+                      <DropdownMenuItem className="text-destructive focus:text-destructive" onClick={() => deleteNode(node.id)}>
+                        <Trash2 className="w-3.5 h-3.5 mr-2" /> Delete
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </div>
               </div>
             )}
           </>
