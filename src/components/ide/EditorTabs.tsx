@@ -11,7 +11,7 @@ export function EditorTabs() {
   }
 
   return (
-    <div className="flex items-center bg-ide-bg border-b border-border overflow-x-auto ide-scrollbar">
+    <div className="flex items-center bg-ide-bg border-b border-border overflow-x-auto scrollbar-none">
       {openTabs.map((tab) => {
         const Icon = getFileIcon(tab.name);
         const iconColor = getFileColor(tab.name);
